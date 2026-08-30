@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Petify</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f5f5f5;
+            text-align: center;
+        }
+
+        .container {
+            width: 400px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px gray;
+        }
+
+        input {
+            width: 90%;
+            padding: 8px;
+            margin: 5px;
+        }
+
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .pet {
+            background: #eee;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .delete {
+            background: red;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h5 id="welcomeUser"></h5>
+
+<div class="container">
+
+<div class="container mt-4">
+    <h1 class="text-center">🐶 Petify</h1>
+</div>
+<button onclick="goToCart()">Go to Cart</button>
+<button class="btn btn-warning" onclick="logout()">Logout</button>
+
+<h3>Add Pet</h3>
+
+<input type="text" id="type" placeholder="Type (Dog/Cat)">
+<input type="text" id="breed" placeholder="Breed">
+<input type="text" id="gender" placeholder="Gender">
+<input type="number" id="price" placeholder="Price">
+
+<br>
+<button onclick="addPet()">Add Pet</button>
+
+<hr>
+
+<h3>Available Pets</h3>
+
+<div id="petList"></div>
+
+</div>
+<button onclick="goToOrders()">My Orders</button>
+
+<script>
+    if (!localStorage.getItem("user")) {
+    window.location.href = "login.html";
+}
+window.onload = loadPets;
+    // simple check (basic auth simulation)
+if (!localStorage.getItem("user")) {
+    window.location.href = "login.html";
+
+}
+document.getElementById("welcomeUser").innerText =
+    "Welcome " + localStorage.getItem("user");
+
+function addPet() {
+
+    const pet = {
+        type: document.getElementById("type").value,
+        breed: document.getElementById("breed").value,
+        gender: document.getElementById("gender").value,
+        price: document.getElementById("price").value,
+        status: "Available"
+    };
+
+    fetch("/api/products/add", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(pet)
+    })
+    .then(res => res.json())
+    .then(() => {
+        alert("Pet Added!");
+        loadPets();
+    });
+}
+
+function loadPets() {
+
+    fetch("/api/products/all")
+    .then(res => res.json())
+    .then(data => {
+
+        let list = document.getElementById("petList");
+        list.innerHTML = "";
+
+        data.forEach(pet => {
+
+           let item = `
+    <div class="card m-2 p-2">
+        <h5>${pet.type} - ${pet.breed}</h5>
+        <p>Gender: ${pet.gender}</p>
+        <p>Price: \u20B9${pet.price}</p>
+
+        <button class="btn btn-primary" onclick="addToCart(${pet.id}, '${pet.type}', ${pet.price})">
+            Add to Cart
+        </button>
+
+        <button class="btn btn-danger" onclick="deletePet(${pet.id})">
+            Delete
+        </button>
+    </div>
+`;
+
+            list.innerHTML += item;
+        });
+    });
+}
+
+function deletePet(id) {
+
+    fetch("/api/products/delete/" + id, {
+        method: "DELETE"
+    })
+    .then(() => {
+        alert("Deleted!");
+        loadPets();
+    });
+}
+
+function addToCart(id, type, price) {
+
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+    cart.push({
+        id: id,
+        type: type,
+        price: price
+    });
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+
+    alert("Added to Cart!");
+}
+
+function goToCart() {
+    window.location.href = "cart.html";
+}
+
+// auto load on page open
+
+function goToOrders() {
+    window.location.href = "orders.html";
+}
+function logout() {
+    localStorage.removeItem("user");
+    window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>

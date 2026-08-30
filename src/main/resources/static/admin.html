@@ -1,0 +1,29 @@
+<h2>Admin Login</h2>
+
+<input id="username" placeholder="Username"><br>
+<input id="password" placeholder="Password"><br>
+
+<button onclick="login()">Login</button>
+
+<script>
+function login() {
+const admin = {
+    loginName: document.getElementById("username").value,
+    password: document.getElementById("password").value
+};
+
+    fetch("/api/admin/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(admin)
+    })
+    .then(res => res.text())
+    .then(data => {
+        if (data === "Admin Login Success") {
+            window.location.href = "admin-dashboard.html";
+        } else {
+            alert("Invalid");
+        }
+    });
+}
+</script>

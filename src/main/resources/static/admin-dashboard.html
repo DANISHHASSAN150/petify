@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #1f252b;
+            color: white;
+            margin: 0;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: #111;
+            height: 100vh;
+            width: 250px;
+            position: fixed;
+            padding: 20px;
+        }
+
+        .sidebar h4 {
+            margin-bottom: 20px;
+        }
+
+        .sidebar button {
+            border-radius: 8px;
+        }
+
+        /* MAIN */
+        .main {
+            margin-left: 250px;
+            padding: 30px;
+        }
+
+        .btn-yellow {
+            background: #ffc107;
+            color: black;
+            font-weight: bold;
+        }
+
+        .btn-yellow:hover {
+            background: #e0a800;
+        }
+
+        .card {
+            background: #2c3136;
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            color: white;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            transition: 0.2s;
+        }
+
+        input {
+    background: #3a3f45 !important;
+    color: #fff !important;
+    border: 1px solid #555 !important;
+}
+
+    input::placeholder {
+    color: #aaa !important;
+}
+
+        h2, h3 {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar text-white">
+    <h4>Admin Panel</h4>
+    <hr>
+
+    <button class="btn btn-light w-100 mb-2" onclick="loadUsers()">Edit User</button>
+    <button class="btn btn-light w-100 mb-2" onclick="showAddPet()">Add Pet</button>
+    <button class="btn btn-light w-100 mb-2" onclick="viewPets()">View Pets</button>
+    <button class="btn btn-light w-100 mb-2" onclick="loadOrders()">View Orders</button>
+    <button class="btn btn-light w-100 mb-2" onclick="manageChatbot()">Chatbot</button>
+    <button class="btn btn-yellow w-100 mt-3" onclick="logout()">Logout</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+    <h2>Admin Dashboard</h2>
+    <div id="content"></div>
+</div>
+
+<script>
+window.onload = loadOrders;
+// 🔒 PROTECT
+if (!localStorage.getItem("admin")) {
+    window.location.href = "login.html";
+}
+
+
+// ================= USERS =================
+function loadUsers() {
+
+    fetch("/api/users/all")
+    .then(res => res.json())
+    .then(data => {
+
+        let html = "<h3>Users</h3>";
+
+        data.forEach(u => {
+            html += `
+                <div class="card p-3 mb-3">
+                    <h5>${u.fullname}</h5>
+                    <p>${u.email}</p>
+
+                    <button class="btn btn-yellow w-100 mb-2"
+                        onclick="editUser(${u.id})">Edit</button>
+
+                    <button class="btn btn-danger w-100"
+                        onclick="deleteUser(${u.id})">Delete</button>
+                </div>
+            `;
+        });
+
+        content.innerHTML = html;
+    });
+}
+
+function deleteUser(id) {
+    fetch("/api/users/admin/delete/" + id, { method: "DELETE" })
+    .then(() => {
+        alert("User Deleted");
+        loadUsers();
+    });
+}
+
+function editUser(id) {
+
+    fetch("/api/users/" + id)
+    .then(res => res.json())
+    .then(user => {
+
+        content.innerHTML = `
+            <div class="card p-4 mx-auto" style="max-width:500px;">
+                <h3>Edit User</h3>
+
+                <input id="fullname" value="${user.fullname}" class="form-control mb-2">
+                <input id="loginName" value="${user.loginName}" class="form-control mb-2">
+                <input id="password" value="${user.password}" class="form-control mb-2">
+                <input id="email" value="${user.email}" class="form-control mb-2">
+                <input id="address" value="${user.address}" class="form-control mb-2">
+                <input id="gender" value="${user.gender}" class="form-control mb-2">
+                <input id="phone" value="${user.phone}" class="form-control mb-3">
+
+                <button onclick="updateUser(${user.id})"
+                    class="btn btn-success w-100">Update</button>
+            </div>
+        `;
+    });
+}
+
+function updateUser(id) {
+
+    const user = {
+        fullname: fullname.value,
+        loginName: loginName.value,
+        password: password.value,
+        email: email.value,
+        address: address.value,
+        gender: gender.value,
+        phone: phone.value
+    };
+
+    fetch("/api/users/admin/update/" + id, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(user)
+    })
+    .then(() => {
+        alert("User Updated!");
+        loadUsers();
+    });
+}
+
+
+// ================= PET =================
+function showAddPet() {
+
+    content.innerHTML = `
+        <div class="card p-4 mx-auto" style="max-width:500px;">
+            <h3>Add Pet</h3>
+
+            <input id="type" class="form-control mb-2" placeholder="Type">
+            <input id="breed" class="form-control mb-2" placeholder="Breed">
+            <input id="gender" class="form-control mb-2" placeholder="Gender">
+            <input id="price" class="form-control mb-2" placeholder="Price">
+
+            <input id="image" class="form-control mb-3" placeholder="Image URL">
+
+            <button class="btn btn-yellow w-100" onclick="addPet()">Add Pet</button>
+        </div>
+    `;
+}
+
+function addPet() {
+
+    const pet = {
+        type: type.value,
+        breed: breed.value,
+        gender: gender.value,
+        price: price.value,
+        image: image.value,   // 👈 NEW
+        status: "Available"
+    };
+
+    fetch("/api/products/admin/add", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(pet)
+    })
+    .then(() => {
+        alert("Pet Added!");
+        viewPets();
+    });
+}
+
+function viewPets() {
+
+    fetch("/api/products/all")
+    .then(res => res.json())
+    .then(data => {
+
+        let grouped = {};
+
+        // 🔥 GROUP BY TYPE
+        data.forEach(pet => {
+            let type = pet.type.toUpperCase();
+
+            if (!grouped[type]) {
+                grouped[type] = [];
+            }
+
+            grouped[type].push(pet);
+        });
+
+        let html = "<h3>All Pets</h3>";
+
+        // 🔥 LOOP CATEGORY
+        for (let type in grouped) {
+
+            html += `<h4 class="mt-4 text-warning">${type}</h4>`;
+
+            grouped[type].forEach(pet => {
+
+                html += `
+                <div class="card p-3 mb-3">
+
+                    <h5>${pet.type} - ${pet.breed}</h5>
+                    <p>₹${pet.price}</p>
+
+                    ${pet.image ? `<img src="${pet.image}" width="150" class="mb-2 rounded">` : ""}
+
+                    <button class="btn btn-danger w-100 mb-2"
+                        onclick="deletePet(${pet.id})">Delete</button>
+
+                    <button class="btn btn-yellow w-100"
+                        onclick="editPet(${pet.id})">Edit</button>
+
+                </div>
+                `;
+            });
+        }
+
+        content.innerHTML = html;
+    });
+}
+
+function deletePet(id) {
+    fetch("/api/products/admin/delete/" + id, { method: "DELETE" })
+    .then(() => {
+        alert("Deleted");
+        viewPets();
+    });
+}
+
+function editPet(id) {
+
+    fetch("/api/products/" + id)
+    .then(res => res.json())
+    .then(pet => {
+
+        content.innerHTML = `
+            <div class="card p-4 mx-auto" style="max-width:500px;">
+                <h3>Edit Pet</h3>
+
+                <input id="type" value="${pet.type}" class="form-control mb-2">
+                <input id="breed" value="${pet.breed}" class="form-control mb-2">
+                <input id="gender" value="${pet.gender}" class="form-control mb-2">
+                <input id="price" value="${pet.price}" class="form-control mb-2">
+
+                <!-- 🔥 NEW IMAGE FIELD -->
+                <input id="image" value="${pet.image || ''}" 
+                       class="form-control mb-3" placeholder="Image URL">
+
+                <!-- 🔥 PREVIEW -->
+                ${pet.image ? `<img src="${pet.image}" width="100%" class="mb-3 rounded">` : ""}
+
+                <button onclick="updatePet(${pet.id})"
+                    class="btn btn-success w-100">Update</button>
+            </div>
+        `;
+    });
+}
+function updatePet(id) {
+
+    const pet = {
+        type: type.value,
+        breed: breed.value,
+        gender: gender.value,
+        price: price.value,
+        image: image.value,   // 🔥 IMPORTANT
+        status: "Available"
+    };
+
+    fetch("/api/products/admin/update/" + id, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(pet)
+    })
+    .then(() => {
+        alert("Pet Updated!");
+        viewPets();
+    });
+}
+
+
+// ================= ORDERS =================
+function loadOrders() {
+
+    fetch("/api/orders/admin/all")
+    .then(res => res.json())
+    .then(data => {
+
+        let html = "<h3>All Orders</h3>";
+
+        data.forEach(order => {
+
+            html += `
+                <div class="card p-3 mb-3">
+                    <h5>Order #${order.id}</h5>
+
+                    <p>User: ${order.username}</p>
+                    <p>Total: \u20B9${order.totalPrice}</p>
+                    <p>Status: ${order.paymentStatus}</p>
+                    <p>Date: ${order.orderDate}</p>
+
+                    ${
+                        order.paymentStatus === "PAID"
+                        ? `<button onclick="markDelivered(${order.id})"
+                            class="btn btn-success w-100">
+                            Mark Delivered
+                        </button>`
+                        : ""
+                    }
+                </div>
+            `;
+        });
+
+        content.innerHTML = html;
+    });
+}
+
+function markDelivered(id) {
+
+    fetch("/api/orders/admin/update/" + id + "?status=DELIVERED", {
+        method: "PUT"
+    })
+    .then(() => {
+        alert("Order Delivered!");
+        loadOrders();
+    });
+}
+
+// chatbot
+
+function manageChatbot() {
+
+    let data = JSON.parse(localStorage.getItem("chatbot")) || [];
+
+    let html = `
+        <h3>Manage Chatbot</h3>
+
+        <div class="card p-3 mb-3">
+            <input id="q" class="form-control mb-2" placeholder="Question">
+            <input id="a" class="form-control mb-2" placeholder="Answer">
+            <button class="btn btn-yellow w-100" onclick="addQA()">Add</button>
+        </div>
+    `;
+
+    data.forEach((item, index) => {
+        html += `
+            <div class="card p-3 mb-2">
+                <b>Q:</b> ${item.q}<br>
+                <b>A:</b> ${item.a}
+
+                <button class="btn btn-danger mt-2 w-100"
+                    onclick="deleteQA(${index})">Delete</button>
+            </div>
+        `;
+    });
+
+    content.innerHTML = html;
+}
+
+// ADD
+function addQA() {
+
+    let q = document.getElementById("q").value;
+    let a = document.getElementById("a").value;
+
+    if (!q || !a) return alert("Fill all fields");
+
+    let data = JSON.parse(localStorage.getItem("chatbot")) || [];
+
+    data.push({ q, a });
+
+    localStorage.setItem("chatbot", JSON.stringify(data));
+
+    manageChatbot();
+}
+
+// DELETE
+function deleteQA(index) {
+
+    let data = JSON.parse(localStorage.getItem("chatbot")) || [];
+
+    data.splice(index, 1);
+
+    localStorage.setItem("chatbot", JSON.stringify(data));
+
+    manageChatbot();
+}
+
+
+// ================= LOGOUT =================
+function logout() {
+    localStorage.removeItem("admin");
+    window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>
